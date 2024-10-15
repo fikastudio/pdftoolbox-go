@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on:
       - ubuntu-latest
-      - self-hosted
+      # - self-hosted
     strategy:
       matrix:
         go-version: ["1.23.2"]
