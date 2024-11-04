@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -14,13 +15,15 @@ import (
 )
 
 type Client struct {
-	exePath     string
-	cacheFolder *string
-	logger      *slog.Logger
+	exePath       string
+	cacheFolder   *string
+	profileFolder *string
+	logger        *slog.Logger
 }
 
 type ClientOpts struct {
-	CacheFolder *string
+	CacheFolder   *string
+	ProfileFolder *string
 }
 
 func New(exePath string, opts *ClientOpts) (*Client, error) {
@@ -39,6 +42,9 @@ func New(exePath string, opts *ClientOpts) (*Client, error) {
 	if opts != nil {
 		if opts.CacheFolder != nil {
 			cl.cacheFolder = opts.CacheFolder
+		}
+		if opts.ProfileFolder != nil {
+			cl.profileFolder = opts.ProfileFolder
 		}
 	}
 
@@ -73,12 +79,16 @@ func NewSetVariableArg(name string, value any) Arg {
 }
 
 func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args ...Arg) []string {
-	cmd := []string{
-		profile,
-	}
+	cmd := []string{}
 
 	for _, a := range args {
 		cmd = append(cmd, a.ArgString())
+	}
+
+	if cl.profileFolder != nil && filepath.IsLocal(profile) {
+		cmd = append(cmd, path.Join(*cl.profileFolder, profile))
+	} else {
+		cmd = append(cmd, profile)
 	}
 
 	for _, inputFile := range inputFiles {
@@ -88,6 +98,7 @@ func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args 
 	return cmd
 }
 
+// RunProfile uses profile in the form of myprofile.kpfx (though the file extension is not checked for)
 func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (*Result, error) {
 	cmd := cl.buildProfileCommand(profile, inputFiles, args...)
 	res, err := cl.runCmd(cmd...)
