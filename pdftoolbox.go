@@ -56,26 +56,26 @@ type ArgString interface {
 }
 
 type Arg struct {
-	arg   string
-	value *string
+	Arg   string  `json:"arg"`
+	Value *string `json:"value"`
 }
 
 func (a Arg) ArgString() string {
-	if a.value == nil {
-		return a.arg
+	if a.Value == nil {
+		return a.Arg
 	}
 
-	return fmt.Sprintf("%s=%s", a.arg, *a.value)
+	return fmt.Sprintf("%s=%s", a.Arg, *a.Value)
 }
 
 func NewTimeoutArg(dur time.Duration) Arg {
 	s := fmt.Sprintf("%.0f", math.Ceil(dur.Seconds()))
-	return Arg{arg: "--timeout", value: &s}
+	return Arg{Arg: "--timeout", Value: &s}
 }
 
 func NewSetVariableArg(name string, value any) Arg {
 	s := fmt.Sprintf("%s:%v", name, value)
-	return Arg{arg: "--setvariable", value: &s}
+	return Arg{Arg: "--setvariable", Value: &s}
 }
 
 func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args ...Arg) []string {
