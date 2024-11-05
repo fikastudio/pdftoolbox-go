@@ -14,12 +14,19 @@ import (
 	"time"
 )
 
+type PDFToolboxClient interface {
+	RunProfile(profile string, inputFiles []string, args ...Arg) (*Result, error)
+	EnumerateProfiles(profileFolder string) (*EnumerateProfilesResponse, error)
+}
+
 type Client struct {
 	exePath       string
 	cacheFolder   *string
 	profileFolder *string
 	logger        *slog.Logger
 }
+
+var _ PDFToolboxClient = &Client{}
 
 type ClientOpts struct {
 	CacheFolder   *string
