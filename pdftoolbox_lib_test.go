@@ -64,6 +64,7 @@ Duration	00:01`
 	parsed, err := pdftoolbox.ParseOutput(output)
 	assert.NoError(t, err)
 	assert.Len(t, parsed.Lines, 16)
+	assert.Equal(t, output, parsed.Raw)
 }
 
 func TestParseError(t *testing.T) {

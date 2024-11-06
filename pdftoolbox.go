@@ -113,12 +113,16 @@ func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (
 		return nil, err
 	}
 
-	fmt.Println(res.Command, res.Duration)
-
-	return &Result{}, nil
+	return &Result{
+		Duration:     res.Duration,
+		Command:      res.Command,
+		RawOutput:    res.Raw,
+		ParsedOutput: res.Lines,
+	}, nil
 }
 
 func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
+	startedAt := time.Now()
 	cmd := exec.Command(cl.exePath, args...)
 
 	cl.logger.Debug("running command", slog.String("cmd", cmd.String()))
@@ -132,7 +136,14 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 		return CmdOutput{}, NewParsedError(cmd.ProcessState.ExitCode(), out)
 	}
 
-	return ParseOutput(string(out))
+	output, err := ParseOutput(string(out))
+	if err != nil {
+		return CmdOutput{}, err
+	}
+	output.Duration = time.Since(startedAt)
+	output.ExitCode = cmd.ProcessState.ExitCode()
+
+	return output, nil
 }
 
 func (cl *Client) EnumerateProfiles(profileFolder string) (*EnumerateProfilesResponse, error) {
@@ -210,6 +221,8 @@ type CmdOutput struct {
 	Lines    []CmdOutputLine
 	Duration time.Duration
 	Command  string
+	Raw      string
+	ExitCode int
 }
 
 func ParseOutput(s string) (CmdOutput, error) {
@@ -258,6 +271,7 @@ func ParseOutput(s string) (CmdOutput, error) {
 	}
 
 	cmdOutput.Lines = outLines
+	cmdOutput.Raw = s
 
 	return cmdOutput, nil
 }

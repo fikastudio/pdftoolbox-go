@@ -1,5 +1,10 @@
 package pdftoolbox
 
+import "time"
+
 type Result struct {
-	Command string
+	Command      string
+	RawOutput    string
+	ParsedOutput []CmdOutputLine
+	Duration     time.Duration
 }
