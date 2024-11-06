@@ -109,16 +109,13 @@ func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args 
 func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (*Result, error) {
 	cmd := cl.buildProfileCommand(profile, inputFiles, args...)
 	res, err := cl.runCmd(cmd...)
-	if err != nil {
-		return nil, err
-	}
 
 	return &Result{
 		Duration:     res.Duration,
 		Command:      res.Command,
 		RawOutput:    res.Raw,
 		ParsedOutput: res.Lines,
-	}, nil
+	}, err
 }
 
 func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
@@ -133,12 +130,16 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 	}
 
 	if cmd.ProcessState.ExitCode() != 0 {
-		return CmdOutput{}, NewParsedError(cmd.ProcessState.ExitCode(), out)
+		return CmdOutput{
+			Raw: string(out),
+		}, NewParsedError(cmd.ProcessState.ExitCode(), out)
 	}
 
 	output, err := ParseOutput(string(out))
 	if err != nil {
-		return CmdOutput{}, err
+		return CmdOutput{
+			Raw: string(out),
+		}, err
 	}
 	output.Duration = time.Since(startedAt)
 	output.ExitCode = cmd.ProcessState.ExitCode()
