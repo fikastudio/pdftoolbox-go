@@ -85,6 +85,10 @@ func NewSetVariableArg(name string, value any) Arg {
 	return Arg{Arg: "--setvariable", Value: &s}
 }
 
+func NewOutputFolderArg(dir string) Arg {
+	return Arg{Arg: "--outputfolder", Value: &dir}
+}
+
 func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args ...Arg) []string {
 	cmd := []string{}
 
@@ -126,7 +130,9 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return CmdOutput{}, err
+		return CmdOutput{
+			Raw: string(out),
+		}, err
 	}
 
 	if cmd.ProcessState.ExitCode() != 0 {
@@ -185,6 +191,7 @@ type ParsedError struct {
 	ProcessExitCode int
 	Code            int64
 	Message         string
+	RawOutput       string
 }
 
 func (p *ParsedError) Error() string {
@@ -197,6 +204,7 @@ func NewParsedError(exitCode int, output []byte) *ParsedError {
 		ProcessExitCode: exitCode,
 		b:               output,
 		s:               string(output),
+		RawOutput:       string(output),
 	}
 
 	parsed, err := ParseOutput(string(output))
