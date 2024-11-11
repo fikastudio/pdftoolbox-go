@@ -132,7 +132,7 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 	if err != nil {
 		return CmdOutput{
 			Raw: string(out),
-		}, err
+		}, NewParsedError(cmd.ProcessState.ExitCode(), out)
 	}
 
 	if cmd.ProcessState.ExitCode() != 0 {
