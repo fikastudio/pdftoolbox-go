@@ -251,20 +251,34 @@ Output	/opt/impose/work/output/Output_File.pdf_x2_0001.pdf
 Finished	/opt/impose/work/SA41271-1UF-R-FL5EZ9QY.pdf
 Duration	00:03`
 
-	parsed, err := pdftoolbox.ParseOutput(output)
-	assert.NoError(t, err)
-	assert.Len(t, parsed.Lines, 170)
-	assert.Equal(t, output, parsed.Raw)
-	assert.Len(t, parsed.Steps, 16)
+	exe := &FakeExecutor{
+		cmd: &exec.Cmd{
+			Path: "/tmp/fakepdftoolbox",
+			Args: []string{"myarg"},
+		},
+		output:   output,
+		exitCode: 1002,
+	}
 
-	pdfCopyStep := parsed.Steps[13]
+	cli, err := pdftoolbox.New("/tmp/fakepdftoolbox", &pdftoolbox.ClientOpts{
+		Executor: exe,
+	})
+	assert.NoError(t, err)
+	res, err := cli.RunProfile("myprofile", []string{"inputfile.pdf"})
+
+	assert.NoError(t, err)
+	assert.Len(t, res.Lines, 170)
+	assert.Equal(t, output, res.Raw)
+	assert.Len(t, res.Steps, 16)
+
+	pdfCopyStep := res.Steps[13]
 	assert.Equal(t, pdfCopyStep.Name, "Create PDF copy")
 	assert.Len(t, pdfCopyStep.Lines, 2)
 	assert.Len(t, pdfCopyStep.OutputFilePaths, 2)
 	assert.Equal(t, "/opt/impose/work/output/Output_File.pdf_sheeting_x2_0001.pdf", pdfCopyStep.OutputFilePaths[0])
 	assert.Equal(t, "/opt/impose/work/output/Output_File.pdf_sheeting_x2_0002.pdf", pdfCopyStep.OutputFilePaths[1])
 
-	lastStep := parsed.Steps[15]
+	lastStep := res.Steps[15]
 	assert.Equal(t, lastStep.Name, "Rename PDF")
 	assert.Len(t, lastStep.Lines, 1)
 	assert.Len(t, lastStep.OutputFilePaths, 1)

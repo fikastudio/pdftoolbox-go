@@ -15,7 +15,7 @@ import (
 )
 
 type PDFToolboxClient interface {
-	RunProfile(profile string, inputFiles []string, args ...Arg) (*Result, error)
+	RunProfile(profile string, inputFiles []string, args ...Arg) (CmdOutput, error)
 	EnumerateProfiles(profileFolder string) (*EnumerateProfilesResponse, error)
 }
 
@@ -147,17 +147,9 @@ func (cl *Client) buildProfileCommand(profile string, inputFiles []string, args 
 }
 
 // RunProfile uses profile in the form of myprofile.kpfx (though the file extension is not checked for)
-func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (*Result, error) {
+func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (CmdOutput, error) {
 	cmd := cl.buildProfileCommand(profile, inputFiles, args...)
-	res, err := cl.runCmd(cmd...)
-
-	return &Result{
-		Duration:     res.Duration,
-		Command:      res.Command,
-		RawOutput:    res.Raw,
-		ParsedOutput: res.Lines,
-		ExitCode:     res.ExitCode,
-	}, err
+	return cl.runCmd(cmd...)
 }
 
 func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
