@@ -59,6 +59,12 @@ func (l CmdOutputErrorLine) String() string {
 	return l.Message
 }
 
+type CmdStepOutput struct {
+	Name            string
+	Lines           []CmdOutputLine
+	OutputFilePaths []string
+}
+
 type EnumerateProfilesResponse struct {
 	Information Information `json:"information"`
 	Profiles    []Profiles  `json:"profiles"`

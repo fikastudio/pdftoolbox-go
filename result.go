@@ -7,4 +7,5 @@ type Result struct {
 	RawOutput    string
 	ParsedOutput []CmdOutputLine
 	Duration     time.Duration
+	ExitCode     int
 }

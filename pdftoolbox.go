@@ -19,7 +19,34 @@ type PDFToolboxClient interface {
 	EnumerateProfiles(profileFolder string) (*EnumerateProfilesResponse, error)
 }
 
+type PDFToolboxExecutor interface {
+	Command(name string, arg ...string) *exec.Cmd
+	CombinedOutput(cmd *exec.Cmd) ([]byte, error)
+	ExitCode(cmd *exec.Cmd) int
+}
+
+type Executor struct {
+}
+
+func NewExecutor() (*Executor, error) {
+	return &Executor{}, nil
+}
+
+func (e Executor) Command(name string, args ...string) *exec.Cmd {
+	return exec.Command(name, args...)
+
+}
+
+func (e Executor) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
+	return cmd.CombinedOutput()
+}
+
+func (e Executor) ExitCode(cmd *exec.Cmd) int {
+	return cmd.ProcessState.ExitCode()
+}
+
 type Client struct {
+	executor      PDFToolboxExecutor
 	exePath       string
 	cacheFolder   *string
 	profileFolder *string
@@ -31,6 +58,7 @@ var _ PDFToolboxClient = &Client{}
 type ClientOpts struct {
 	CacheFolder   *string
 	ProfileFolder *string
+	Executor      PDFToolboxExecutor
 }
 
 func New(exePath string, opts *ClientOpts) (*Client, error) {
@@ -39,8 +67,14 @@ func New(exePath string, opts *ClientOpts) (*Client, error) {
 		return nil, err
 	}
 
+	exe, err := NewExecutor()
+	if err != nil {
+		return nil, err
+	}
+
 	cl := &Client{
-		exePath: absPath,
+		executor: exe,
+		exePath:  absPath,
 		logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})),
@@ -52,6 +86,9 @@ func New(exePath string, opts *ClientOpts) (*Client, error) {
 		}
 		if opts.ProfileFolder != nil {
 			cl.profileFolder = opts.ProfileFolder
+		}
+		if opts.Executor != nil {
+			cl.executor = opts.Executor
 		}
 	}
 
@@ -119,26 +156,21 @@ func (cl *Client) RunProfile(profile string, inputFiles []string, args ...Arg) (
 		Command:      res.Command,
 		RawOutput:    res.Raw,
 		ParsedOutput: res.Lines,
+		ExitCode:     res.ExitCode,
 	}, err
 }
 
 func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 	startedAt := time.Now()
-	cmd := exec.Command(cl.exePath, args...)
+	cmd := cl.executor.Command(cl.exePath, args...)
 
 	cl.logger.Debug("running command", slog.String("cmd", cmd.String()))
 
-	out, err := cmd.CombinedOutput()
+	out, err := cl.executor.CombinedOutput(cmd)
 	if err != nil {
 		return CmdOutput{
 			Raw: string(out),
-		}, NewParsedError(cmd.ProcessState.ExitCode(), out)
-	}
-
-	if cmd.ProcessState.ExitCode() != 0 {
-		return CmdOutput{
-			Raw: string(out),
-		}, NewParsedError(cmd.ProcessState.ExitCode(), out)
+		}, NewParsedError(cl.executor.ExitCode(cmd), out)
 	}
 
 	output, err := ParseOutput(string(out))
@@ -148,7 +180,7 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 		}, err
 	}
 	output.Duration = time.Since(startedAt)
-	output.ExitCode = cmd.ProcessState.ExitCode()
+	output.ExitCode = cl.executor.ExitCode(cmd)
 
 	return output, nil
 }
@@ -228,6 +260,7 @@ func NewParsedError(exitCode int, output []byte) *ParsedError {
 
 type CmdOutput struct {
 	Lines    []CmdOutputLine
+	Steps    []CmdStepOutput
 	Duration time.Duration
 	Command  string
 	Raw      string
@@ -239,6 +272,8 @@ func ParseOutput(s string) (CmdOutput, error) {
 	var outLines []CmdOutputLine
 	var cmdOutput CmdOutput
 
+	var step *CmdStepOutput
+
 	for _, line := range lines {
 		items := strings.Split(line, "\t")
 		fmt.Println(strings.Join(items, "|"), len(items))
@@ -246,6 +281,10 @@ func ParseOutput(s string) (CmdOutput, error) {
 		if len(line) == 0 {
 			continue
 		}
+
+		var il CmdOutputIdentityLine
+		il.Line = line
+		il.Parts = items
 
 		switch items[0] {
 		case "Error", "Errors":
@@ -270,13 +309,29 @@ func ParseOutput(s string) (CmdOutput, error) {
 			cmdOutput.Duration = l.dur
 
 			outLines = append(outLines, l)
-		default:
-			var l CmdOutputIdentityLine
-			l.Line = line
-			l.Parts = items
+		case "Step":
+			if step != nil {
+				cmdOutput.Steps = append(cmdOutput.Steps, *step)
+			}
 
-			outLines = append(outLines, l)
+			step = &CmdStepOutput{
+				Name: items[1],
+			}
+
+			outLines = append(outLines, il)
+		case "Output":
+			if step != nil {
+				step.Lines = append(step.Lines, il)
+				step.OutputFilePaths = append(step.OutputFilePaths, items[1])
+			}
+			outLines = append(outLines, il)
+		default:
+			outLines = append(outLines, il)
 		}
+	}
+
+	if step != nil {
+		cmdOutput.Steps = append(cmdOutput.Steps, *step)
 	}
 
 	cmdOutput.Lines = outLines
