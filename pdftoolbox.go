@@ -33,7 +33,8 @@ func NewExecutor() (*Executor, error) {
 }
 
 func (e Executor) Command(name string, args ...string) *exec.Cmd {
-	return exec.Command(name, args...)
+	cmd := exec.Command(name, args...)
+	return cmd
 
 }
 
@@ -59,6 +60,7 @@ type ClientOpts struct {
 	CacheFolder   *string
 	ProfileFolder *string
 	Executor      PDFToolboxExecutor
+	Logger        *slog.Logger
 }
 
 func New(exePath string, opts *ClientOpts) (*Client, error) {
@@ -89,6 +91,9 @@ func New(exePath string, opts *ClientOpts) (*Client, error) {
 		}
 		if opts.Executor != nil {
 			cl.executor = opts.Executor
+		}
+		if opts.Logger != nil {
+			cl.logger = opts.Logger
 		}
 	}
 
@@ -159,20 +164,19 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 	cl.logger.Debug("running command", slog.String("cmd", cmd.String()))
 
 	out, err := cl.executor.CombinedOutput(cmd)
-	if err != nil {
-		return CmdOutput{
-			Raw: string(out),
-		}, NewParsedError(cl.executor.ExitCode(cmd), out)
+	if len(out) == 0 {
+		return CmdOutput{}, NewParsedError(cl.executor.ExitCode(cmd), out)
 	}
 
+	elapsedTime := time.Since(startedAt)
 	output, err := ParseOutput(string(out))
 	if err != nil {
 		return CmdOutput{
 			Raw: string(out),
 		}, err
 	}
-	output.Duration = time.Since(startedAt)
 	output.ExitCode = cl.executor.ExitCode(cmd)
+	output.Duration = elapsedTime
 
 	return output, nil
 }
