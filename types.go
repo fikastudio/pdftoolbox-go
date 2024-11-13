@@ -1,13 +1,16 @@
 package pdftoolbox
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
-type LineOutputType uint8
+type LineOutputType string
 
 const (
-	IdentityLine LineOutputType = iota
-	ErrorLine
-	DurationLine
+	IdentityLine LineOutputType = "identity"
+	ErrorLine    LineOutputType = "error"
+	DurationLine LineOutputType = "duration"
 )
 
 type CmdOutputLine interface {
@@ -15,9 +18,15 @@ type CmdOutputLine interface {
 	String() string
 }
 
+type LineOutputTypename struct {
+	json.RawMessage
+	Typename LineOutputType `json:"__typename"`
+}
+
 type CmdOutputIdentityLine struct {
-	Line  string
-	Parts []string
+	Typename LineOutputType `json:"__typename"`
+	Line     string         `json:"line"`
+	Parts    []string       `json:"parts"`
 }
 
 func (l CmdOutputIdentityLine) Type() LineOutputType {
@@ -28,10 +37,16 @@ func (l CmdOutputIdentityLine) String() string {
 	return l.Line
 }
 
+func (l *CmdOutputIdentityLine) MarshalJSON() (b []byte, e error) {
+	l.Typename = l.Type()
+	return json.Marshal(l)
+}
+
 type CmdOutputDurationLine struct {
-	Line  string
-	Parts []string
-	dur   time.Duration
+	Typename LineOutputType `json:"__typename"`
+	Line     string         `json:"line"`
+	Parts    []string       `json:"parts"`
+	dur      time.Duration
 }
 
 func (l CmdOutputDurationLine) Type() LineOutputType {
@@ -46,9 +61,15 @@ func (l CmdOutputDurationLine) Duration() time.Duration {
 	return l.dur
 }
 
+func (l *CmdOutputDurationLine) MarshalJSON() (b []byte, e error) {
+	l.Typename = l.Type()
+	return json.Marshal(l)
+}
+
 type CmdOutputErrorLine struct {
-	Code    int64
-	Message string
+	Typename LineOutputType `json:"__typename"`
+	Code     int64          `json:"code"`
+	Message  string         `json:"message"`
 }
 
 func (l CmdOutputErrorLine) Type() LineOutputType {
@@ -59,10 +80,80 @@ func (l CmdOutputErrorLine) String() string {
 	return l.Message
 }
 
+func (l *CmdOutputErrorLine) MarshalJSON() (b []byte, e error) {
+	l.Typename = l.Type()
+	return json.Marshal(l)
+}
+
 type CmdStepOutput struct {
-	Name            string
-	Lines           []CmdOutputLine
-	OutputFilePaths []string
+	Name            string          `json:"name"`
+	Lines           []CmdOutputLine `json:"lines"`
+	OutputFilePaths []string        `json:"outputFilePaths"`
+}
+
+func (ce *CmdStepOutput) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+
+	for k, rawMessage := range objMap {
+		switch k {
+		case "name":
+			err := json.Unmarshal(*rawMessage, &ce.Name)
+			if err != nil {
+				return err
+			}
+		case "lines":
+			var lines []LineOutputTypename
+			err := json.Unmarshal(*rawMessage, &lines)
+			if err != nil {
+				return err
+			}
+
+			var finalLines []CmdOutputLine
+
+			for _, line := range lines {
+				switch line.Typename {
+				case ErrorLine:
+					var el CmdOutputErrorLine
+					err := json.Unmarshal(line.RawMessage, &el)
+					if err != nil {
+						return err
+					}
+
+					finalLines = append(finalLines, el)
+				case IdentityLine:
+					var el CmdOutputIdentityLine
+					err := json.Unmarshal(line.RawMessage, &el)
+					if err != nil {
+						return err
+					}
+
+					finalLines = append(finalLines, el)
+				case DurationLine:
+					var el CmdOutputDurationLine
+					err := json.Unmarshal(line.RawMessage, &el)
+					if err != nil {
+						return err
+					}
+
+					finalLines = append(finalLines, el)
+				}
+			}
+		case "outputFilePaths":
+			if rawMessage == nil {
+				continue
+			}
+			err := json.Unmarshal(*rawMessage, &ce.OutputFilePaths)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 type EnumerateProfilesResponse struct {
