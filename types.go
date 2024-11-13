@@ -87,7 +87,7 @@ func (l *CmdOutputErrorLine) MarshalJSON() (b []byte, e error) {
 
 type CmdStepOutput struct {
 	Name            string          `json:"name"`
-	Lines           []CmdOutputLine `json:"lines"`
+	Lines           []CmdOutputLine `json:"-"` // TODO: add serialization
 	OutputFilePaths []string        `json:"outputFilePaths"`
 }
 
