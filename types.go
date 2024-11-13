@@ -92,6 +92,10 @@ type CmdStepOutput struct {
 }
 
 func (ce *CmdStepOutput) UnmarshalJSON(b []byte) error {
+	if b == nil {
+		return nil
+	}
+
 	var objMap map[string]*json.RawMessage
 	err := json.Unmarshal(b, &objMap)
 	if err != nil {
@@ -99,6 +103,10 @@ func (ce *CmdStepOutput) UnmarshalJSON(b []byte) error {
 	}
 
 	for k, rawMessage := range objMap {
+		if rawMessage == nil {
+			continue
+		}
+
 		switch k {
 		case "name":
 			err := json.Unmarshal(*rawMessage, &ce.Name)
@@ -143,9 +151,6 @@ func (ce *CmdStepOutput) UnmarshalJSON(b []byte) error {
 				}
 			}
 		case "outputFilePaths":
-			if rawMessage == nil {
-				continue
-			}
 			err := json.Unmarshal(*rawMessage, &ce.OutputFilePaths)
 			if err != nil {
 				return err
