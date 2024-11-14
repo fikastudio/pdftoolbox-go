@@ -5,8 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on:
-      - ubuntu-latest
-      # - self-hosted
+      - carbonaware-1vcpu-ubuntu-2204
     strategy:
       matrix:
         go-version: ["1.23.2"]
