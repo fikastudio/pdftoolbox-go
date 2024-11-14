@@ -4,8 +4,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on:
-      - carbonaware-1vcpu-ubuntu-2204
+    runs-on: carbonaware-1vcpu-ubuntu-2204
     strategy:
       matrix:
         go-version: ["1.23.2"]
