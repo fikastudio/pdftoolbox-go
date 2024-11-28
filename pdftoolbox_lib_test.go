@@ -257,7 +257,7 @@ Duration	00:03`
 			Args: []string{"myarg"},
 		},
 		output:   output,
-		exitCode: 1002,
+		exitCode: 5,
 	}
 
 	cli, err := pdftoolbox.New("/tmp/fakepdftoolbox", &pdftoolbox.ClientOpts{
@@ -266,7 +266,9 @@ Duration	00:03`
 	assert.NoError(t, err)
 	res, err := cli.RunProfile("myprofile", []string{"inputfile.pdf"})
 
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
 	assert.Len(t, res.Lines, 170)
 	assert.Equal(t, output, res.Raw)
 	assert.Len(t, res.Steps, 16)
@@ -327,7 +329,10 @@ Error	1002	Could not open file /opt/impose/profilesxxx: File or folder not found
 		Executor: exe,
 	})
 	assert.NoError(t, err)
-	res, err := cli.RunProfile("myprofile", []string{"inputfile.pdf"})
-	assert.NoError(t, err)
-	assert.Equal(t, 1002, res.ExitCode)
+	_, err = cli.RunProfile("myprofile", []string{"inputfile.pdf"})
+	assert.Error(t, err)
+
+	pe, ok := err.(*pdftoolbox.ParsedError)
+	assert.True(t, ok)
+	assert.Equal(t, 1002, pe.ProcessExitCode)
 }

@@ -164,7 +164,7 @@ func (cl *Client) runCmd(args ...string) (CmdOutput, error) {
 	cl.logger.Debug("running command", slog.String("cmd", cmd.String()))
 
 	out, err := cl.executor.CombinedOutput(cmd)
-	if len(out) == 0 {
+	if len(out) == 0 || cl.executor.ExitCode(cmd) >= 100 {
 		return CmdOutput{}, NewParsedError(cl.executor.ExitCode(cmd), out)
 	}
 
@@ -223,8 +223,7 @@ type ParsedError struct {
 }
 
 func (p *ParsedError) Error() string {
-
-	return ""
+	return p.Message
 }
 
 func NewParsedError(exitCode int, output []byte) *ParsedError {

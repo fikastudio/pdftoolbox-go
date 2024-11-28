@@ -65,7 +65,7 @@ func TestX(t *testing.T) {
 		t.FailNow()
 	}
 
-	res, err := cl.runCmd("something", "nothing")
+	_, err = cl.runCmd("something", "nothing")
 	if !assert.Error(t, err) {
 		t.FailNow()
 	}
@@ -75,6 +75,6 @@ func TestX(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Contains(t, res.Raw, "Not activated (no license")
+	assert.Contains(t, string(e2.b), "Not activated (no license")
 	assert.Equal(t, int64(1008), e2.Code)
 }

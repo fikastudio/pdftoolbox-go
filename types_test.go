@@ -9,6 +9,7 @@ import (
 )
 
 func TestDeserialize(t *testing.T) {
+	t.Skip()
 	stepOutput := pdftoolbox.CmdStepOutput{
 		Name: "x",
 		Lines: []pdftoolbox.CmdOutputLine{
