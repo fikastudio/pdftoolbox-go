@@ -114,6 +114,10 @@ func (a Arg) ArgString() string {
 		return a.Arg
 	}
 
+	if strings.Contains(*a.Value, " ") {
+		return fmt.Sprintf(`%s="%s"`, a.Arg, *a.Value)
+	}
+
 	return fmt.Sprintf("%s=%s", a.Arg, *a.Value)
 }
 

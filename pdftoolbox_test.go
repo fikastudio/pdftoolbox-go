@@ -48,10 +48,11 @@ func TestGeneratesCommandProfileFolder(t *testing.T) {
 		[]string{"SA41271-1UF-R-FL5EZ9QY.pdf"},
 		NewSetVariableArg("trimWidth", "55"),
 		NewSetVariableArg("trimHeight", "55"),
+		NewSetVariableArg("cutlineName", "Die Cut"),
 		NewTimeoutArg(time.Second*60),
 	)
 
-	assert.Equal(t, `--setvariable=trimWidth:55 --setvariable=trimHeight:55 --timeout=60 ../profiles/CLI_Example.kfpx SA41271-1UF-R-FL5EZ9QY.pdf`, strings.Join(res, " "))
+	assert.Equal(t, `--setvariable=trimWidth:55 --setvariable=trimHeight:55 --setvariable="cutlineName:Die Cut" --timeout=60 ../profiles/CLI_Example.kfpx SA41271-1UF-R-FL5EZ9QY.pdf`, strings.Join(res, " "))
 }
 
 func TestX(t *testing.T) {
